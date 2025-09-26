@@ -1,0 +1,212 @@
+.grid {
+  display: flex;
+  flex: 0 1 auto;
+  /* defaults to 'row'  */
+  flex-direction: row;
+  flex-wrap: wrap;
+  /* defaults to 'flex-start'  */
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.grid-col {
+  flex: 0 0 auto;
+  padding: 0 0.5rem 0.5rem;
+  box-sizing: border-box;
+}
+
+.grid-col_1 {
+  flex-basis: 8.33333333%;
+  max-width: 8.33333333%;
+}
+
+.grid-col_2 {
+  flex-basis: 16.66666667%;
+  max-width: 16.66666667%;
+}
+
+.grid-col_3 {
+  flex-basis: 25%;
+  max-width: 25%;
+}
+
+.grid-col_4 {
+  flex-basis: 33.33333333%;
+  max-width: 33.33333333%;
+}
+
+.grid-col_5 {
+  flex-basis: 41.66666667%;
+  max-width: 41.66666667%;
+}
+
+.grid-col_6 {
+  flex-basis: 50%;
+  max-width: 50%;
+}
+
+.grid-col_7 {
+  flex-basis: 58.33333333%;
+  max-width: 58.33333333%;
+}
+
+.grid-col_8 {
+  flex-basis: 66.66666667%;
+  max-width: 66.66666667%;
+}
+
+.grid-col_9 {
+  flex-basis: 75%;
+  max-width: 75%;
+}
+
+.grid-col_10 {
+  flex-basis: 83.33333333%;
+  max-width: 83.33333333%;
+}
+
+.grid-col_11 {
+  flex-basis: 91.66666667%;
+  max-width: 91.66666667%;
+}
+
+.grid-col_12 {
+  flex-basis: 100%;
+  max-width: 100%;
+}
+
+/* ================ MY CSS ================== */
+
+.container-fluid.container-fluid {
+    max-width: 96vw;
+    margin-left: 2vw;
+    margin-right: 2vw;
+}
+  
+h1 {
+    border-bottom: 3px solid #615055;
+    padding: 2rem;
+    font-family: 'Courier New', Courier, monospace;
+    margin-top: 0px;
+}
+  
+.card.card {
+    max-width: 50vw;
+    border: 15px groove #A7C7E7;
+    border-left: 15px solid #A7C7E7;
+    border-top: 15px solid #A7C7E7;
+    border-radius: 20px;
+    box-shadow: 7px 4px 40px 16px rgb(0, 0, 0, 0.7);
+    margin: auto;
+    margin-top: 4vh;
+}
+
+.card-text {
+    margin: 2%;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: 600;
+}
+  
+.card-img.card-img {
+    max-width: 70%;
+    max-height: auto;
+    border: 2px solid #615055;
+    border-radius: 10px;
+    box-shadow: 7px 4px 10px 8px rgb(0, 0, 0, 0.6);
+    margin: 15%;
+    margin-top: 2vh;
+    margin-bottom: 2vh;
+}
+  
+.card-title.card-title {
+    margin: 1rem;
+}
+  
+.noLink {
+    transition: .3s;
+    cursor: pointer;
+    text-decoration: none;
+    padding: .5rem;
+    color: #9FD356;
+    border: 2px solid #9FD356;
+    background-color: #615055;
+    border-radius: 7px;
+    font-size: 1.3rem;
+}
+  
+img {
+    margin: auto;
+    align-self: center;
+    border-radius: 9px;
+    border: 1px solid #615055;
+    box-shadow: 5px 3px 20px 6px rgb(0, 0, 0, 0.6);
+    margin-bottom: 2vh;
+    margin-top: 4vh;
+    max-width: 100%;
+}
+  
+li {
+    margin-top: 3vh;
+    list-style: none;
+    text-align: center;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(198, 189, 189, 0.582);
+    background-color: rgba(198, 189, 189, 0.582);
+    margin-top: 0px;
+    padding: 1rem;
+}
+  
+.noLink:hover {
+    transition: .3s;
+    color: #FCB5B5;
+    font-weight: 700;
+    border: 3px solid #CF8E80;
+    box-shadow: 0px 1px 5px 3px rgb(0, 0, 0, 0.6);
+    font-size: 1.5rem;
+}
+  
+.noLinkCard {
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.adjustable {
+    flex-basis: 66.66666667%;
+    max-width: 66.66666667%;
+}
+  
+@media (min-width: 768px) {
+    #home1{
+        display: none;
+    }
+}
+  
+  @media (max-width: 767px) {
+    #home2{
+      display: none;
+    }
+  
+    .card.card {
+      max-width: 90vw;
+      border: 10px groove #A7C7E7;
+      border-left: 10px solid #A7C7E7;
+      border-top: 10px solid #A7C7E7;
+    }
+  
+    .card-img.card-img {
+      max-width: 90%;
+      box-shadow: 2px 2px 10px 4px rgb(0, 0, 0, 0.6);
+      margin-left: 5%;
+      margin-right: 5%;
+      margin-bottom: 1vh;
+    }
+
+    .adjustable {
+        flex-basis: 100%;
+        max-width: 100%;
+    }
+  
+  }
