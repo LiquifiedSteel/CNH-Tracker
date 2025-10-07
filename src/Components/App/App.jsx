@@ -1,24 +1,37 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+// src/App.jsx
+import React from "react";
+// Use BrowserRouter from react-router-dom for web apps
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-function App() {
-  const [message, setMessage] = useState('');
+// Import your page components (default exports assumed).
+// Adjust the relative paths to match your project structure.
+import Home from "../Home/Home";         // example: src/Home/Home.jsx
+import LoginForm from "../LoginForm/LoginForm";
 
-  useEffect(() => {
-    axios({
-      method: 'GET',
-      url: '/api/test'
-    }).then(response => setMessage(response.data))
-      .catch(err => console.error("Failed to recieve message: ", err));
-  }, [])
+export default function App() {
+  // Example: replace this with your real auth/user state (context, redux, etc.)
+  // For now it's a simple placeholder so the example routes render.
+  const user = { id: null }; // or { id: "abc" } to simulate logged-in
 
   return (
-    <div>
-      <h1>Hello from React</h1>
-      <p>{message && message}</p>
-    </div>
+    // BrowserRouter provides the HTML5 history-based routing
+    <BrowserRouter>
+      <Routes>
+        {/* redirect root to /home */}
+        <Route path="/" element={<Navigate to="/home" replace />} />
+
+        {/* home route */}
+        <Route path="/home" element={<Home />} />
+
+        {/* login route: if user.id exists, redirect to home; otherwise show login */}
+        <Route
+          path="/login"
+          element={user && user.id ? <Navigate to="/home" replace /> : <LoginForm />}
+        />
+
+        {/* optional: a catch-all 404 route */}
+        <Route path="*" element={<div>404 — Not Found</div>} />
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;
