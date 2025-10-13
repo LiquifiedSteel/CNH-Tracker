@@ -20,8 +20,6 @@ function Home() {
   const [progress, setProgress] = useState(0);
   const [sheetInput, setSheetInput] = useState("");
 
-    console.log(spreadsheetId);
-
   // Fetch rows once a sheet is linked
   useEffect(() => {
     if (spreadsheetId) {
@@ -29,7 +27,7 @@ function Home() {
     }
   }, [dispatch, spreadsheetId]);
 
-  // Convert rows -> objects using memoization (prevents new refs each render)
+  // Convert rows -> objects
   const items = useMemo(() => {
     if (!Array.isArray(rows) || rows.length === 0) return [];
     const [header, ...data] = rows;
@@ -37,13 +35,22 @@ function Home() {
     return data.map((r) => Object.fromEntries(header.map((h, i) => [h, r?.[i] ?? ""])));
   }, [rows]);
 
-  // Simple progress from Comment field
+  // Helper: a row is "non-empty" if ANY field has a non-whitespace value
+  const isNonEmptyRow = (obj) =>
+    obj && Object.values(obj).some((v) => String(v ?? "").trim() !== "");
+
+  // Use filtered list for display & progress
+  const displayItems = useMemo(() => items.filter(isNonEmptyRow), [items]);
+
+  // Progress from Comment field over non-empty rows
   useEffect(() => {
-    const total = items.length;
+    const total = displayItems.length;
     if (!total) return setProgress(0);
-    const done = items.filter((it) => String(it?.Comment || "").toLowerCase().includes("done")).length;
+    const done = displayItems.filter((it) =>
+      String(it?.Comment || "").toLowerCase().includes("done")
+    ).length;
     setProgress(Math.round((done / total) * 100));
-  }, [items]);
+  }, [displayItems]);
 
   const handleLinkSubmit = (e) => {
     e.preventDefault();
@@ -143,7 +150,7 @@ function Home() {
 
           {/* Cards below progress bar, in their own Row */}
           <Row className="cards-row">
-            {items.map((obj, idx) => (
+            {displayItems.map((obj, idx) => (
               <Col key={idx} xs={12} sm={12} md={6} lg={4} className="mb-3">
                 <Card className="device-card">
                   <Card.Body>
@@ -180,7 +187,7 @@ function Home() {
               </Col>
             ))}
 
-            {!isLoading && !rowsError && items.length === 0 && (
+            {!isLoading && !rowsError && displayItems.length === 0 && (
               <Col xs={12}>
                 <Card className="empty-card">
                   <Card.Body>No rows found in the first sheet tab.</Card.Body>
