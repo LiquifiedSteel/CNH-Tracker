@@ -1,0 +1,139 @@
+/* Mobile-first base */
+.home-container {
+  padding: 12px;
+}
+
+.page-title {
+  margin: 6px 0 14px;
+  font-size: 1.25rem;
+}
+
+/* Link card */
+.link-card {
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.muted-text {
+  opacity: 0.8;
+  margin-bottom: 12px;
+}
+
+.link-form .form-label {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.link-form .form-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+/* Progress area */
+.progress-card {
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  margin-bottom: 14px;
+}
+
+.progress-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.progress-left {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.progress-label {
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.sheet-title {
+  opacity: 0.75;
+}
+
+.progress-value {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+/* Loading & alerts */
+.loading-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+}
+
+.loading-text {
+  opacity: 0.85;
+}
+
+/* Cards grid */
+.cards-row {
+  margin-top: 6px; /* separate from progress bar row */
+}
+
+.device-card {
+  height: 100%;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.device-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+/* Key-value rows inside a card */
+.kv {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 6px 10px;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(0,0,0,0.08);
+}
+
+.kv:last-child {
+  border-bottom: none;
+}
+
+.k {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.v {
+  word-break: break-word;
+  opacity: 0.92;
+}
+
+/* Empty state */
+.empty-card {
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  text-align: center;
+}
+
+/* Small enhancements on wider screens */
+@media (min-width: 768px) {
+  .home-container {
+    padding: 16px;
+  }
+  .page-title {
+    font-size: 1.5rem;
+  }
+  .kv {
+    grid-template-columns: 140px 1fr;
+  }
+}

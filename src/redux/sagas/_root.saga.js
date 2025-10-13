@@ -1,5 +1,5 @@
 import { all } from "redux-saga/effects";
-import budgetSaga from "./budget.saga";
+import googleSheetsSaga from "./googleSheets.saga";
 
 // rootSaga is the primary saga.
 // It bundles up all of the other sagas so our project can use them.
@@ -10,6 +10,6 @@ import budgetSaga from "./budget.saga";
 // and login triggers setting the user
 export default function* rootSaga() {
   yield all([
-    budgetSaga(),
+    googleSheetsSaga(),
   ]);
 }

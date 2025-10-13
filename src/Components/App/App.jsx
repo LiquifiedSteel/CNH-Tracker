@@ -1,5 +1,5 @@
-// src/App.jsx
-import React from "react";
+import 'bootstrap/dist/css/bootstrap.min.css';
+
 // Use BrowserRouter from react-router-dom for web apps
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
