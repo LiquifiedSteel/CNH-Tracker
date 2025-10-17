@@ -12,12 +12,14 @@ import {
 } from "react-bootstrap";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { SHEETS } from "../../redux/sagas/googleSheets.saga"; // adjust path if needed
 import useSheetSearch from "../../hooks/useSheetSearch";
 import "../Home/Home.css"; // reuse existing styles
 
 function Total() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // ---- Redux state ----
   const spreadsheetId = useSelector((s) => s.sheets?.spreadsheetId);
@@ -47,6 +49,19 @@ function Total() {
       <Row>
         <Col>
           <h1 className="page-title">All Computers</h1>
+        </Col>
+      </Row>
+
+      {/* Back button */}
+      <Row className="mb-3">
+        <Col xs={12}>
+          <Button
+            variant="outline-secondary"
+            onClick={() => navigate("/home")}
+            aria-label="Back to Home"
+          >
+            ← Back
+          </Button>
         </Col>
       </Row>
 
