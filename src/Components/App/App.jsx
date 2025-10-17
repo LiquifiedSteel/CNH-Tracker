@@ -8,6 +8,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Home from "../Home/Home";         // example: src/Home/Home.jsx
 import LoginForm from "../LoginForm/LoginForm";
 import ComputerDetails from '../ComputerDetails/ComputerDetails';
+import Total from '../Total/Total';
 
 export default function App() {
   // Example: replace this with your real auth/user state (context, redux, etc.)
@@ -25,6 +26,8 @@ export default function App() {
         <Route path="/home" element={<Home />} />
 
         <Route path="/computers" element={<ComputerDetails />} />
+
+        <Route path="/total" element={<Total />} />
 
         {/* login route: if user.id exists, redirect to home; otherwise show login */}
         <Route
