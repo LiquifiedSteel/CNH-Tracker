@@ -29,7 +29,6 @@ function Home() {
   const isLinking = useSelector((s) => s.sheets?.isLinking);
   const linkError = useSelector((s) => s.sheets?.linkError);
 
-  const [progress, setProgress] = useState(0);
   const [sheetInput, setSheetInput] = useState("");
 
   // Fetch rows once a sheet is linked
@@ -74,15 +73,11 @@ function Home() {
   );
   const totalCount = displayItems.length;
 
-  // Progress (kept as your original Comment-based logic)
-  useEffect(() => {
-    const total = displayItems.length;
-    if (!total) return setProgress(0);
-    const done = displayItems.filter((it) =>
-      String(it?.Comment || "").toLowerCase().includes("done")
-    ).length;
-    setProgress(Math.round((done / total) * 100));
-  }, [displayItems]);
+  // ---- Progress: percentage of total devices completed ----
+  const progress = useMemo(() => {
+    if (!totalCount) return 0;
+    return Math.round((completedCount / totalCount) * 100);
+  }, [completedCount, totalCount]);
 
   const handleLinkSubmit = (e) => {
     e.preventDefault();
