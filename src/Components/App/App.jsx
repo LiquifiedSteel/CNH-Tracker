@@ -6,7 +6,6 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 // Import your page components (default exports assumed).
 // Adjust the relative paths to match your project structure.
 import Home from "../Home/Home";         // example: src/Home/Home.jsx
-import LoginForm from "../LoginForm/LoginForm";
 import ComputerDetails from '../ComputerDetails/ComputerDetails';
 import Total from '../Total/Total';
 
@@ -28,12 +27,6 @@ export default function App() {
         <Route path="/computers" element={<ComputerDetails />} />
 
         <Route path="/total" element={<Total />} />
-
-        {/* login route: if user.id exists, redirect to home; otherwise show login */}
-        <Route
-          path="/login"
-          element={user && user.id ? <Navigate to="/home" replace /> : <LoginForm />}
-        />
 
         {/* optional: a catch-all 404 route */}
         <Route path="*" element={<div>404 — Not Found</div>} />
