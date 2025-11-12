@@ -56,7 +56,25 @@ function Home() {
   // Filter out empty rows
   const displayItems = useMemo(() => items.filter(isNonEmptyRow), [items]);
 
-  // Progress from Comment field over non-empty rows
+  // Treat Completed as boolean true or string "true"
+  const isTrue = (v) => {
+    if (typeof v === "boolean") return v;
+    const s = String(v ?? "").trim().toLowerCase();
+    return s === "true";
+  };
+
+  // ---- Counters ----
+  const completedCount = useMemo(
+    () => displayItems.filter((it) => isTrue(it["Completed"])).length,
+    [displayItems]
+  );
+  const pendingCount = useMemo(
+    () => displayItems.filter((it) => !isTrue(it["Completed"])).length,
+    [displayItems]
+  );
+  const totalCount = displayItems.length;
+
+  // Progress (kept as your original Comment-based logic)
   useEffect(() => {
     const total = displayItems.length;
     if (!total) return setProgress(0);
@@ -74,11 +92,6 @@ function Home() {
   };
 
   const showLinkCard = !spreadsheetId;
-
-  // --- Status counts for the buttons ---
-  const completedCount = 0; // placeholder for future logic
-  const pendingCount = 0;   // placeholder for future logic
-  const totalCount = displayItems.length; // only non-empty rows, header excluded
 
   // --- Navigation handlers for the three buttons ---
   const goCompleted = () => navigate("/completed");
@@ -247,6 +260,7 @@ function Home() {
             {displayItems.map((obj, idx) => {
               const device = obj["Device"] || "";
               const isClickable = device.trim().length > 0;
+              const completed = isTrue(obj["Completed"]);
 
               return (
                 <Col key={idx} xs={12} sm={12} md={6} lg={4} className="mb-3">
@@ -256,7 +270,11 @@ function Home() {
                     onKeyDown={isClickable ? (e) => onCardKey(e, device) : undefined}
                     role={isClickable ? "button" : undefined}
                     tabIndex={isClickable ? 0 : undefined}
-                    style={{ cursor: isClickable ? "pointer" : "default" }}
+                    style={{
+                      cursor: isClickable ? "pointer" : "default",
+                      backgroundColor: completed ? "rgba(40, 167, 69, 0.10)" : undefined,
+                      borderColor: completed ? "rgba(40, 167, 69, 0.35)" : undefined,
+                    }}
                     aria-label={
                       isClickable ? `Open details for ${device}` : undefined
                     }
@@ -291,6 +309,11 @@ function Home() {
                       <div className="kv">
                         <span className="k">Comment</span>
                         <span className="v">{obj["Comment"] || "-"}</span>
+                      </div>
+
+                      <div className="kv">
+                        <span className="k">Completed</span>
+                        <span className="v">{completed ? "true" : "false"}</span>
                       </div>
                     </Card.Body>
                   </Card>

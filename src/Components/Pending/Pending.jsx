@@ -1,4 +1,4 @@
-// src/components/Total.jsx
+// src/components/Pending.jsx
 import {
   Card,
   Col,
@@ -9,24 +9,25 @@ import {
   Form,
   Button,
   InputGroup,
+  Badge,
 } from "react-bootstrap";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { SHEETS } from "../../redux/sagas/googleSheets.saga"; // adjust path if needed
 import useSheetSearch from "../../hooks/useSheetSearch";
 import "../Home/Home.css"; // reuse existing styles
 
-function Total() {
+function Pending() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   // ---- Redux state ----
-  const spreadsheetId  = useSelector((s) => s.sheets?.spreadsheetId);
-  const rows           = useSelector((s) => s.sheets?.rows);
-  const isLoading      = useSelector((s) => s.sheets?.isLoading);
-  const rowsError      = useSelector((s) => s.sheets?.rowsError);
-  const updatingDevice = useSelector((s) => s.sheets?.updatingDevice); // for disabling while updating
+  const spreadsheetId   = useSelector((s) => s.sheets?.spreadsheetId);
+  const rows            = useSelector((s) => s.sheets?.rows);
+  const isLoading       = useSelector((s) => s.sheets?.isLoading);
+  const rowsError       = useSelector((s) => s.sheets?.rowsError);
+  const updatingDevice  = useSelector((s) => s.sheets?.updatingDevice); // for button disabling
 
   // Fetch rows if we have a linked sheet but no data yet
   useEffect(() => {
@@ -35,17 +36,27 @@ function Total() {
     }
   }, [dispatch, spreadsheetId, rows]);
 
-  // ---- Transform + search (filters empty rows; checks all fields) ----
+  // ---- Use the reusable hook for transformation + filtering + search ----
   const { query, setQuery, filtered, normalizedQuery } = useSheetSearch(rows);
 
-  const handleSearchChange = (e) => setQuery(e.target.value);
-
-  // Helpers
+  // Treat Completed as boolean true or string "true"
   const isTrue = (v) => {
     if (typeof v === "boolean") return v;
     const s = String(v ?? "").trim().toLowerCase();
     return s === "true";
   };
+
+  // Only show NOT-completed rows (apply on top of the hook's search result)
+  const pendingOnly = useMemo(
+    () => filtered.filter((it) => !isTrue(it["Completed"])),
+    [filtered]
+  );
+
+  const pendingCount = pendingOnly.length;
+
+  const handleSearchChange = (e) => setQuery(e.target.value);
+
+  // Case-insensitive device equality for disabling the correct button while updating
   const ciEq = (a, b) =>
     String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
 
@@ -60,13 +71,13 @@ function Total() {
     <Container fluid className="home-container">
       <Row>
         <Col>
-          <h1 className="page-title">All Computers</h1>
+          <h1 className="page-title">Pending Computers</h1>
         </Col>
       </Row>
 
-      {/* Back button */}
-      <Row className="mb-3">
-        <Col xs={12}>
+      {/* Back + Counter Row */}
+      <Row className="mb-3 align-items-center">
+        <Col xs={6}>
           <Button
             variant="outline-secondary"
             onClick={() => navigate("/home")}
@@ -74,6 +85,12 @@ function Total() {
           >
             ← Back
           </Button>
+        </Col>
+        <Col xs={6} className="text-end">
+          <span className="muted-text me-2">Remaining:</span>
+          <Badge bg="warning" text="dark" pill>
+            {pendingCount}
+          </Badge>
         </Col>
       </Row>
 
@@ -123,38 +140,27 @@ function Total() {
       {/* Results */}
       {!isLoading && !rowsError && (
         <Row className="cards-row">
-          {filtered.map((obj, idx) => {
+          {pendingOnly.map((obj, idx) => {
             const device = obj["Device"] || "";
-            const completed = isTrue(obj["Completed"]);
             const isUpdatingThis = updatingDevice && ciEq(updatingDevice, device);
 
             return (
               <Col key={idx} xs={12} sm={12} md={6} lg={4} className="mb-3">
-                <Card
-                  className="device-card"
-                  style={{
-                    backgroundColor: completed ? "rgba(40, 167, 69, 0.10)" : undefined,
-                    borderColor: completed ? "rgba(40, 167, 69, 0.35)" : undefined,
-                  }}
-                >
+                <Card className="device-card" aria-busy={isUpdatingThis || undefined}>
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-start">
                       <Card.Title className="device-title mb-0">
                         {device || "Device"}
                       </Card.Title>
-
-                      {/* Show Complete button only when NOT completed */}
-                      {!completed && (
-                        <Button
-                          variant="success"
-                          size="sm"
-                          onClick={() => markCompleted(device)}
-                          aria-label={`Mark ${device || "device"} as complete`}
-                          disabled={isUpdatingThis}
-                        >
-                          {isUpdatingThis ? "Updating…" : "Complete"}
-                        </Button>
-                      )}
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={() => markCompleted(device)}
+                        aria-label={`Mark ${device || "device"} as Completed`}
+                        disabled={isUpdatingThis}
+                      >
+                        {isUpdatingThis ? "Updating…" : "Completed"}
+                      </Button>
                     </div>
 
                     <div className="kv">
@@ -183,24 +189,19 @@ function Total() {
                       <span className="k">Comment</span>
                       <span className="v">{obj["Comment"] || "-"}</span>
                     </div>
-
-                    <div className="kv">
-                      <span className="k">Completed</span>
-                      <span className="v">{completed ? "true" : "false"}</span>
-                    </div>
                   </Card.Body>
                 </Card>
               </Col>
             );
           })}
 
-          {filtered.length === 0 && (
+          {pendingOnly.length === 0 && (
             <Col xs={12}>
               <Card className="empty-card">
                 <Card.Body>
                   {normalizedQuery
-                    ? `No computers match "${query}".`
-                    : "No computers available."}
+                    ? `No pending computers match "${query}".`
+                    : "No pending computers."}
                 </Card.Body>
               </Card>
             </Col>
@@ -211,4 +212,4 @@ function Total() {
   );
 }
 
-export default Total;
+export default Pending;

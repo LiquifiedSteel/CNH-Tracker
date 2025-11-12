@@ -13,6 +13,16 @@ export const SHEETS = {
     SUCCESS: "GOOGLE_SHEETS/ROWS_SUCCESS",
     FAILURE: "GOOGLE_SHEETS/ROWS_FAILURE",
   },
+  COMPLETE: {
+    REQUEST: "GOOGLE_SHEETS/COMPLETE_REQUEST",
+    SUCCESS: "GOOGLE_SHEETS/COMPLETE_SUCCESS",
+    FAILURE: "GOOGLE_SHEETS/COMPLETE_FAILURE",
+  },
+  UNCOMPLETE: {
+    REQUEST: "GOOGLE_SHEETS/UNCOMPLETE_REQUEST",
+    SUCCESS: "GOOGLE_SHEETS/UNCOMPLETE_SUCCESS",
+    FAILURE: "GOOGLE_SHEETS/UNCOMPLETE_FAILURE",
+  },
 };
 
 // If the frontend is served by this same Express app, a relative base works.
@@ -38,6 +48,12 @@ function postLinkSheet(spreadsheetId) {
 }
 function getRows() {
   return api.get("/api/googleSheets/rows");
+}
+function putComplete(device) {
+  return api.put("/api/googleSheets/complete", { device });
+}
+function putUncomplete(device) {
+  return api.put("/api/googleSheets/uncomplete", { device });
 }
 
 // ************** Workers **************
@@ -97,6 +113,50 @@ function* fetchRowsWorker() {
   }
 }
 
+// NEW: mark as completed
+function* completeDeviceWorker(action) {
+  try {
+    const device = String(action?.payload?.device || "").trim();
+    if (!device) throw new Error("Device is required.");
+    const { data } = yield call(putComplete, device);
+    if (!data?.ok) throw new Error(data?.error || "Failed to mark as completed.");
+    yield put({
+      type: SHEETS.COMPLETE.SUCCESS,
+      payload: { device, result: data },
+    });
+    // Refresh rows so UI stays in sync
+    yield put({ type: SHEETS.ROWS.REQUEST });
+  } catch (err) {
+    yield put({
+      type: SHEETS.COMPLETE.FAILURE,
+      error: true,
+      payload: normalizeError(err),
+    });
+  }
+}
+
+// NEW: mark as uncompleted
+function* uncompleteDeviceWorker(action) {
+  try {
+    const device = String(action?.payload?.device || "").trim();
+    if (!device) throw new Error("Device is required.");
+    const { data } = yield call(putUncomplete, device);
+    if (!data?.ok) throw new Error(data?.error || "Failed to mark as uncompleted.");
+    yield put({
+      type: SHEETS.UNCOMPLETE.SUCCESS,
+      payload: { device, result: data },
+    });
+    // Refresh rows so UI stays in sync
+    yield put({ type: SHEETS.ROWS.REQUEST });
+  } catch (err) {
+    yield put({
+      type: SHEETS.UNCOMPLETE.FAILURE,
+      error: true,
+      payload: normalizeError(err),
+    });
+  }
+}
+
 // ************** Watchers / Root **************
 function* watchLinkSheet() {
   yield takeLatest(SHEETS.LINK.REQUEST, linkSheetWorker);
@@ -104,6 +164,18 @@ function* watchLinkSheet() {
 function* watchFetchRows() {
   yield takeLatest(SHEETS.ROWS.REQUEST, fetchRowsWorker);
 }
+function* watchCompleteDevice() {
+  yield takeLatest(SHEETS.COMPLETE.REQUEST, completeDeviceWorker);
+}
+function* watchUncompleteDevice() {
+  yield takeLatest(SHEETS.UNCOMPLETE.REQUEST, uncompleteDeviceWorker);
+}
+
 export default function* googleSheetsSaga() {
-  yield all([watchLinkSheet(), watchFetchRows()]);
+  yield all([
+    watchLinkSheet(),
+    watchFetchRows(),
+    watchCompleteDevice(),
+    watchUncompleteDevice(),
+  ]);
 }
