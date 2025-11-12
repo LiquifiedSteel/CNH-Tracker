@@ -1,4 +1,4 @@
-// googleSheets.saga.js
+// redux/sagas/googleSheets.saga.js
 import axios from "axios";
 import { all, call, put, takeLatest, select, delay } from "redux-saga/effects";
 
@@ -18,20 +18,23 @@ export const SHEETS = {
     SUCCESS: "GOOGLE_SHEETS/COMPLETE_SUCCESS",
     FAILURE: "GOOGLE_SHEETS/COMPLETE_FAILURE",
   },
-  UNCOMPLETE: {
-    REQUEST: "GOOGLE_SHEETS/UNCOMPLETE_REQUEST",
-    SUCCESS: "GOOGLE_SHEETS/UNCOMPLETE_SUCCESS",
-    FAILURE: "GOOGLE_SHEETS/UNCOMPLETE_FAILURE",
+  INCOMPLETE: {
+    REQUEST: "GOOGLE_SHEETS/INCOMPLETE_REQUEST",
+    SUCCESS: "GOOGLE_SHEETS/INCOMPLETE_SUCCESS",
+    FAILURE: "GOOGLE_SHEETS/INCOMPLETE_FAILURE",
+  },
+  COMMENT_UPDATE: {
+    REQUEST: "GOOGLE_SHEETS/COMMENT_UPDATE_REQUEST",
+    SUCCESS: "GOOGLE_SHEETS/COMMENT_UPDATE_SUCCESS",
+    FAILURE: "GOOGLE_SHEETS/COMMENT_UPDATE_FAILURE",
   },
 };
 
-// If the frontend is served by this same Express app, a relative base works.
 const api = axios.create({
-  baseURL: "", // leave empty if client and server share origin (your express `build` + /api)
+  baseURL: "",
   headers: { "Content-Type": "application/json" },
 });
 
-// Optional selector if you keep a pending spreadsheetId in state
 const selectSpreadsheetId = (state) => state.sheets?.pendingSpreadsheetId || null;
 
 function normalizeError(err) {
@@ -42,7 +45,7 @@ function normalizeError(err) {
   return { status, data, message };
 }
 
-// ************** API calls — note the /api/googleSheets prefix **************
+// --- API calls ---
 function postLinkSheet(spreadsheetId) {
   return api.post("/api/googleSheets/link", { spreadsheetId });
 }
@@ -52,11 +55,14 @@ function getRows() {
 function putComplete(device) {
   return api.put("/api/googleSheets/complete", { device });
 }
-function putUncomplete(device) {
-  return api.put("/api/googleSheets/uncomplete", { device });
+function putIncomplete(device) {
+  return api.put("/api/googleSheets/incomplete", { device });
+}
+function putUpdateComment(device, comment) {
+  return api.put("/api/googleSheets/comment", { device, comment });
 }
 
-// ************** Workers **************
+// --- Workers ---
 function* linkSheetWorker(action) {
   try {
     const idFromAction = action?.payload?.spreadsheetId;
@@ -76,7 +82,6 @@ function* linkSheetWorker(action) {
       },
     });
 
-    // Auto-fetch rows after linking
     yield put({ type: SHEETS.ROWS.REQUEST });
   } catch (err) {
     yield put({ type: SHEETS.LINK.FAILURE, error: true, payload: normalizeError(err) });
@@ -103,7 +108,7 @@ function* fetchRowsWorker() {
         return;
       } catch (inner) {
         lastError = normalizeError(inner);
-        if (lastError.status === 400) break; // not linked yet
+        if (lastError.status === 400) break;
         yield delay(250 * attempt);
       }
     }
@@ -113,69 +118,61 @@ function* fetchRowsWorker() {
   }
 }
 
-// NEW: mark as completed
-function* completeDeviceWorker(action) {
+function* completeWorker(action) {
   try {
     const device = String(action?.payload?.device || "").trim();
     if (!device) throw new Error("Device is required.");
     const { data } = yield call(putComplete, device);
-    if (!data?.ok) throw new Error(data?.error || "Failed to mark as completed.");
-    yield put({
-      type: SHEETS.COMPLETE.SUCCESS,
-      payload: { device, result: data },
-    });
-    // Refresh rows so UI stays in sync
-    yield put({ type: SHEETS.ROWS.REQUEST });
+    if (!data?.ok) throw new Error(data?.error || "Failed to mark complete.");
+    yield put({ type: SHEETS.COMPLETE.SUCCESS, payload: { device } });
   } catch (err) {
-    yield put({
-      type: SHEETS.COMPLETE.FAILURE,
-      error: true,
-      payload: normalizeError(err),
-    });
+    yield put({ type: SHEETS.COMPLETE.FAILURE, error: true, payload: normalizeError(err), meta: { device: action?.payload?.device || null } });
+    yield put({ type: SHEETS.ROWS.REQUEST });
   }
 }
 
-// NEW: mark as uncompleted
-function* uncompleteDeviceWorker(action) {
+function* incompleteWorker(action) {
   try {
     const device = String(action?.payload?.device || "").trim();
     if (!device) throw new Error("Device is required.");
-    const { data } = yield call(putUncomplete, device);
-    if (!data?.ok) throw new Error(data?.error || "Failed to mark as uncompleted.");
-    yield put({
-      type: SHEETS.UNCOMPLETE.SUCCESS,
-      payload: { device, result: data },
-    });
-    // Refresh rows so UI stays in sync
-    yield put({ type: SHEETS.ROWS.REQUEST });
+    const { data } = yield call(putIncomplete, device);
+    if (!data?.ok) throw new Error(data?.error || "Failed to mark incomplete.");
+    yield put({ type: SHEETS.INCOMPLETE.SUCCESS, payload: { device } });
   } catch (err) {
-    yield put({
-      type: SHEETS.UNCOMPLETE.FAILURE,
-      error: true,
-      payload: normalizeError(err),
-    });
+    yield put({ type: SHEETS.INCOMPLETE.FAILURE, error: true, payload: normalizeError(err), meta: { device: action?.payload?.device || null } });
+    yield put({ type: SHEETS.ROWS.REQUEST });
   }
 }
 
-// ************** Watchers / Root **************
-function* watchLinkSheet() {
-  yield takeLatest(SHEETS.LINK.REQUEST, linkSheetWorker);
+function* updateCommentWorker(action) {
+  try {
+    const device  = String(action?.payload?.device || "").trim();
+    const comment = String(action?.payload?.comment ?? "");
+    if (!device) throw new Error("Device is required.");
+
+    const { data } = yield call(putUpdateComment, device, comment);
+    if (!data?.ok) throw new Error(data?.error || "Failed to update comment.");
+
+    yield put({ type: SHEETS.COMMENT_UPDATE.SUCCESS, payload: { device, comment } });
+  } catch (err) {
+    yield put({ type: SHEETS.COMMENT_UPDATE.FAILURE, error: true, payload: normalizeError(err), meta: { device: action?.payload?.device || null } });
+    yield put({ type: SHEETS.ROWS.REQUEST });
+  }
 }
-function* watchFetchRows() {
-  yield takeLatest(SHEETS.ROWS.REQUEST, fetchRowsWorker);
-}
-function* watchCompleteDevice() {
-  yield takeLatest(SHEETS.COMPLETE.REQUEST, completeDeviceWorker);
-}
-function* watchUncompleteDevice() {
-  yield takeLatest(SHEETS.UNCOMPLETE.REQUEST, uncompleteDeviceWorker);
-}
+
+// --- Watchers / Root ---
+function* watchLinkSheet()     { yield takeLatest(SHEETS.LINK.REQUEST,       linkSheetWorker); }
+function* watchFetchRows()     { yield takeLatest(SHEETS.ROWS.REQUEST,       fetchRowsWorker); }
+function* watchComplete()      { yield takeLatest(SHEETS.COMPLETE.REQUEST,    completeWorker); }
+function* watchIncomplete()    { yield takeLatest(SHEETS.INCOMPLETE.REQUEST,  incompleteWorker); }
+function* watchUpdateComment() { yield takeLatest(SHEETS.COMMENT_UPDATE.REQUEST, updateCommentWorker); }
 
 export default function* googleSheetsSaga() {
   yield all([
     watchLinkSheet(),
     watchFetchRows(),
-    watchCompleteDevice(),
-    watchUncompleteDevice(),
+    watchComplete(),
+    watchIncomplete(),
+    watchUpdateComment(),
   ]);
 }

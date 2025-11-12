@@ -1,4 +1,4 @@
-// ComputerDetails.jsx
+// src/components/ComputerDetails.jsx
 import {
   Card,
   Col,
@@ -7,12 +7,13 @@ import {
   Spinner,
   Alert,
   Button,
-  Badge,
+  Form,
 } from "react-bootstrap";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SHEETS } from "../../redux/sagas/googleSheets.saga"; // adjust path if needed
+import "../Home/Home.css";
 
 function ComputerDetails() {
   const dispatch = useDispatch();
@@ -24,11 +25,12 @@ function ComputerDetails() {
   const deviceFromQuery = decodeURIComponent(params.get("id") || "").trim();
 
   // --- Redux state
-  const spreadsheetId   = useSelector((s) => s.sheets?.spreadsheetId);
-  const rows            = useSelector((s) => s.sheets?.rows);
-  const isLoading       = useSelector((s) => s.sheets?.isLoading);
-  const rowsError       = useSelector((s) => s.sheets?.rowsError);
-  const updatingDevice  = useSelector((s) => s.sheets?.updatingDevice);
+  const spreadsheetId       = useSelector((s) => s.sheets?.spreadsheetId);
+  const rows                = useSelector((s) => s.sheets?.rows);
+  const isLoading           = useSelector((s) => s.sheets?.isLoading);
+  const rowsError           = useSelector((s) => s.sheets?.rowsError);
+  const updatingDevice      = useSelector((s) => s.sheets?.updatingDevice);
+  const updatingCommentFor  = useSelector((s) => s.sheets?.updatingCommentFor);
 
   // If we have a linked sheet but no rows yet, fetch them
   useEffect(() => {
@@ -42,9 +44,7 @@ function ComputerDetails() {
     if (!Array.isArray(rows) || rows.length === 0) return [];
     const [header, ...data] = rows;
     if (!Array.isArray(header)) return [];
-    return data.map((r) =>
-      Object.fromEntries(header.map((h, i) => [h, r?.[i] ?? ""]))
-    );
+    return data.map((r) => Object.fromEntries(header.map((h, i) => [h, r?.[i] ?? ""])));
   }, [rows]);
 
   // helper to filter out empty rows
@@ -64,25 +64,38 @@ function ComputerDetails() {
     );
   }, [displayItems, deviceKey]);
 
-  // helpers
-  const isTrue = (v) => {
-    if (typeof v === "boolean") return v;
-    return String(v ?? "").trim().toLowerCase() === "true";
-  };
-  const ciEq = (a, b) =>
-    String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
-
-  // Handlers
-  const goBack = () => navigate("/home");
-  const markCompleted = () => {
-    if (!record?.Device) return;
-    const d = String(record.Device).trim();
-    if (!d) return;
-    dispatch({ type: SHEETS.COMPLETE.REQUEST, payload: { device: d } });
-  };
-
+  const isTrue = (v) => (typeof v === "boolean" ? v : String(v ?? "").trim().toLowerCase() === "true");
   const completed = isTrue(record?.Completed);
-  const isUpdatingThis = updatingDevice && ciEq(updatingDevice, record?.Device);
+
+  // --- Comment editing ---
+  const [commentDraft, setCommentDraft] = useState(record?.Comment || "");
+  useEffect(() => {
+    setCommentDraft(record?.Comment || "");
+  }, [record]);
+
+  const saveComment = () => {
+    const d = String(record?.Device || "").trim();
+    if (!d) return;
+    dispatch({ type: SHEETS.COMMENT_UPDATE.REQUEST, payload: { device: d, comment: commentDraft } });
+  };
+
+  // --- Complete / Incomplete toggles ---
+  const toggleComplete = () => {
+    const d = String(record?.Device || "").trim();
+    if (!d) return;
+    if (completed) {
+      dispatch({ type: SHEETS.INCOMPLETE.REQUEST, payload: { device: d } });
+    } else {
+      dispatch({ type: SHEETS.COMPLETE.REQUEST, payload: { device: d } });
+    }
+  };
+
+  const goBack = () => navigate("/home");
+
+  const isUpdatingThisDevice =
+    updatingDevice && String(updatingDevice).trim().toLowerCase() === deviceKey;
+  const isSavingThisComment =
+    updatingCommentFor && String(updatingCommentFor).trim().toLowerCase() === deviceKey;
 
   return (
     <Container fluid className="home-container">
@@ -104,21 +117,17 @@ function ComputerDetails() {
             ← Back
           </Button>
         </Col>
-
-        {/* Show "Complete" only if NOT already completed */}
-        {!completed && (
-          <Col xs={6}>
-            <Button
-              variant="success"
-              className="w-100"
-              onClick={markCompleted}
-              aria-label="Mark as Complete"
-              disabled={isUpdatingThis}
-            >
-              {isUpdatingThis ? "Updating…" : "Complete"}
-            </Button>
-          </Col>
-        )}
+        <Col xs={6}>
+          <Button
+            variant={completed ? "outline-warning" : "success"}
+            className="w-100"
+            onClick={toggleComplete}
+            aria-label={completed ? "Mark Pending" : "Mark Complete"}
+            disabled={isUpdatingThisDevice}
+          >
+            {isUpdatingThisDevice ? "Updating…" : completed ? "Mark Pending" : "Complete"}
+          </Button>
+        </Col>
       </Row>
 
       {/* Loading / error states */}
@@ -136,8 +145,7 @@ function ComputerDetails() {
         <Row className="mb-3">
           <Col xs={12}>
             <Alert variant="danger">
-              <strong>Failed to load data:</strong>{" "}
-              {rowsError.message || "Unknown error"}
+              <strong>Failed to load data:</strong> {rowsError.message || "Unknown error"}
             </Alert>
           </Col>
         </Row>
@@ -148,24 +156,14 @@ function ComputerDetails() {
         <Row>
           <Col xs={12}>
             {record ? (
-              <Card
-                className="device-card"
-                style={{
-                  backgroundColor: completed ? "rgba(40, 167, 69, 0.10)" : undefined,
-                  borderColor: completed ? "rgba(40, 167, 69, 0.35)" : undefined,
-                }}
-              >
+              <Card className="device-card" style={{
+                backgroundColor: completed ? "rgba(40, 167, 69, 0.10)" : undefined,
+                borderColor: completed ? "rgba(40, 167, 69, 0.35)" : undefined,
+              }}>
                 <Card.Body>
-                  <div className="d-flex justify-content-between align-items-start">
-                    <Card.Title className="device-title mb-0">
-                      {record["Device"] || "Device"}
-                    </Card.Title>
-                    {completed && (
-                      <Badge bg="success" pill>
-                        Completed
-                      </Badge>
-                    )}
-                  </div>
+                  <Card.Title className="device-title">
+                    {record["Device"] || "Device"}
+                  </Card.Title>
 
                   <div className="kv">
                     <span className="k">IP Address</span>
@@ -190,14 +188,33 @@ function ComputerDetails() {
                   </div>
 
                   <div className="kv">
-                    <span className="k">Comment</span>
-                    <span className="v">{record["Comment"] || "-"}</span>
-                  </div>
-
-                  <div className="kv">
                     <span className="k">Completed</span>
                     <span className="v">{completed ? "true" : "false"}</span>
                   </div>
+
+                  {/* Comment editor */}
+                  <Form className="mt-3">
+                    <Form.Group controlId="commentField">
+                      <Form.Label>Comment</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={3}
+                        value={commentDraft}
+                        onChange={(e) => setCommentDraft(e.target.value)}
+                        placeholder="Add a note…"
+                      />
+                    </Form.Group>
+                    <div className="d-flex justify-content-end mt-2">
+                      <Button
+                        variant="primary"
+                        onClick={saveComment}
+                        disabled={isSavingThisComment}
+                        aria-label="Save Comment"
+                      >
+                        {isSavingThisComment ? "Saving…" : "Save Comment"}
+                      </Button>
+                    </div>
+                  </Form>
                 </Card.Body>
               </Card>
             ) : (
