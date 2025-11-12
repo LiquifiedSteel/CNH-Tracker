@@ -7,6 +7,7 @@ import {
   Spinner,
   Alert,
   Button,
+  Badge,
 } from "react-bootstrap";
 import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -23,10 +24,11 @@ function ComputerDetails() {
   const deviceFromQuery = decodeURIComponent(params.get("id") || "").trim();
 
   // --- Redux state
-  const spreadsheetId = useSelector((s) => s.sheets?.spreadsheetId);
-  const rows = useSelector((s) => s.sheets?.rows);
-  const isLoading = useSelector((s) => s.sheets?.isLoading);
-  const rowsError = useSelector((s) => s.sheets?.rowsError);
+  const spreadsheetId   = useSelector((s) => s.sheets?.spreadsheetId);
+  const rows            = useSelector((s) => s.sheets?.rows);
+  const isLoading       = useSelector((s) => s.sheets?.isLoading);
+  const rowsError       = useSelector((s) => s.sheets?.rowsError);
+  const updatingDevice  = useSelector((s) => s.sheets?.updatingDevice);
 
   // If we have a linked sheet but no rows yet, fetch them
   useEffect(() => {
@@ -62,12 +64,25 @@ function ComputerDetails() {
     );
   }, [displayItems, deviceKey]);
 
+  // helpers
+  const isTrue = (v) => {
+    if (typeof v === "boolean") return v;
+    return String(v ?? "").trim().toLowerCase() === "true";
+  };
+  const ciEq = (a, b) =>
+    String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
+
   // Handlers
   const goBack = () => navigate("/home");
   const markCompleted = () => {
-    // TODO: wire up completion logic later (e.g., dispatch action / write to sheet)
-    // placeholder for now
+    if (!record?.Device) return;
+    const d = String(record.Device).trim();
+    if (!d) return;
+    dispatch({ type: SHEETS.COMPLETE.REQUEST, payload: { device: d } });
   };
+
+  const completed = isTrue(record?.Completed);
+  const isUpdatingThis = updatingDevice && ciEq(updatingDevice, record?.Device);
 
   return (
     <Container fluid className="home-container">
@@ -89,16 +104,21 @@ function ComputerDetails() {
             ← Back
           </Button>
         </Col>
-        <Col xs={6}>
-          <Button
-            variant="success"
-            className="w-100"
-            onClick={markCompleted}
-            aria-label="Mark as Completed"
-          >
-            Completed
-          </Button>
-        </Col>
+
+        {/* Show "Complete" only if NOT already completed */}
+        {!completed && (
+          <Col xs={6}>
+            <Button
+              variant="success"
+              className="w-100"
+              onClick={markCompleted}
+              aria-label="Mark as Complete"
+              disabled={isUpdatingThis}
+            >
+              {isUpdatingThis ? "Updating…" : "Complete"}
+            </Button>
+          </Col>
+        )}
       </Row>
 
       {/* Loading / error states */}
@@ -128,11 +148,24 @@ function ComputerDetails() {
         <Row>
           <Col xs={12}>
             {record ? (
-              <Card className="device-card">
+              <Card
+                className="device-card"
+                style={{
+                  backgroundColor: completed ? "rgba(40, 167, 69, 0.10)" : undefined,
+                  borderColor: completed ? "rgba(40, 167, 69, 0.35)" : undefined,
+                }}
+              >
                 <Card.Body>
-                  <Card.Title className="device-title">
-                    {record["Device"] || "Device"}
-                  </Card.Title>
+                  <div className="d-flex justify-content-between align-items-start">
+                    <Card.Title className="device-title mb-0">
+                      {record["Device"] || "Device"}
+                    </Card.Title>
+                    {completed && (
+                      <Badge bg="success" pill>
+                        Completed
+                      </Badge>
+                    )}
+                  </div>
 
                   <div className="kv">
                     <span className="k">IP Address</span>
@@ -159,6 +192,11 @@ function ComputerDetails() {
                   <div className="kv">
                     <span className="k">Comment</span>
                     <span className="v">{record["Comment"] || "-"}</span>
+                  </div>
+
+                  <div className="kv">
+                    <span className="k">Completed</span>
+                    <span className="v">{completed ? "true" : "false"}</span>
                   </div>
                 </Card.Body>
               </Card>
