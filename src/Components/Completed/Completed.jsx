@@ -1,4 +1,4 @@
-// src/components/Completed.jsx
+// Completed.jsx
 import {
   Card,
   Col,
@@ -38,12 +38,7 @@ function Completed() {
   // ---- Use the reusable hook for transformation + filtering + search ----
   const { query, setQuery, filtered, normalizedQuery } = useSheetSearch(rows);
 
-  // Treat Completed as boolean true or string "true"
-  const isTrue = (v) => {
-    if (typeof v === "boolean") return v;
-    const s = String(v ?? "").trim().toLowerCase();
-    return s === "true";
-  };
+  const isTrue = (v) => (typeof v === "boolean" ? v : String(v ?? "").trim().toLowerCase() === "true");
 
   // Only show completed rows (apply on top of the hook's search result)
   const completedOnly = useMemo(
@@ -54,6 +49,21 @@ function Completed() {
   const completedCount = completedOnly.length;
 
   const handleSearchChange = (e) => setQuery(e.target.value);
+
+  // Navigate to /computers?id={Device}
+  const goToDevice = (device) => {
+    const d = String(device || "").trim();
+    if (!d) return;
+    navigate(`/computers?id=${encodeURIComponent(d)}`);
+  };
+
+  // Keyboard support for cards
+  const onCardKey = (e, device) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      goToDevice(device);
+    }
+  };
 
   return (
     <Container fluid className="home-container">
@@ -128,55 +138,66 @@ function Completed() {
       {/* Results */}
       {!isLoading && !rowsError && (
         <Row className="cards-row">
-          {completedOnly.map((obj, idx) => (
-            <Col key={idx} xs={12} sm={12} md={6} lg={4} className="mb-3">
-              <Card
-                className="device-card"
-                style={{
-                  backgroundColor: "rgba(40, 167, 69, 0.10)",  // subtle green
-                  borderColor: "rgba(40, 167, 69, 0.35)",
-                }}
-              >
-                <Card.Body>
-                  <Card.Title className="device-title mb-0">
-                    {obj["Device"] || "Device"}
-                  </Card.Title>
+          {completedOnly.map((obj, idx) => {
+            const device = obj["Device"] || "";
+            const isClickable = device.trim().length > 0;
 
-                  <div className="kv">
-                    <span className="k">IP Address</span>
-                    <span className="v">{obj["IP Address"] || "-"}</span>
-                  </div>
+            return (
+              <Col key={idx} xs={12} sm={12} md={6} lg={4} className="mb-3">
+                <Card
+                  className="device-card"
+                  onClick={isClickable ? () => goToDevice(device) : undefined}
+                  onKeyDown={isClickable ? (e) => onCardKey(e, device) : undefined}
+                  role={isClickable ? "button" : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                  style={{
+                    cursor: isClickable ? "pointer" : "default",
+                    backgroundColor: "rgba(40, 167, 69, 0.10)",  // subtle green
+                    borderColor: "rgba(40, 167, 69, 0.35)",
+                  }}
+                  aria-label={isClickable ? `Open details for ${device}` : undefined}
+                >
+                  <Card.Body>
+                    <Card.Title className="device-title mb-0">
+                      {device || "Device"}
+                    </Card.Title>
 
-                  <div className="kv">
-                    <span className="k">Equipment Type</span>
-                    <span className="v">{obj["Equipment Type"] || "-"}</span>
-                  </div>
+                    <div className="kv">
+                      <span className="k">IP Address</span>
+                      <span className="v">{obj["IP Address"] || "-"}</span>
+                    </div>
 
-                  <div className="kv">
-                    <span className="k">Mfr</span>
-                    <span className="v">{obj["Mfr"] || "-"}</span>
-                  </div>
+                    <div className="kv">
+                      <span className="k">Equipment Type</span>
+                      <span className="v">{obj["Equipment Type"] || "-"}</span>
+                    </div>
 
-                  <div className="kv">
-                    <span className="k">Model Name</span>
-                    <span className="v">
-                      {obj["*Model Name"] || obj["Model Name"] || "-"}
-                    </span>
-                  </div>
+                    <div className="kv">
+                      <span className="k">Mfr</span>
+                      <span className="v">{obj["Mfr"] || "-"}</span>
+                    </div>
 
-                  <div className="kv">
-                    <span className="k">Comment</span>
-                    <span className="v">{obj["Comment"] || "-"}</span>
-                  </div>
+                    <div className="kv">
+                      <span className="k">Model Name</span>
+                      <span className="v">
+                        {obj["*Model Name"] || obj["Model Name"] || "-"}
+                      </span>
+                    </div>
 
-                  <div className="kv">
-                    <span className="k">Completed</span>
-                    <span className="v">true</span>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
+                    <div className="kv">
+                      <span className="k">Comment</span>
+                      <span className="v">{obj["Comment"] || "-"}</span>
+                    </div>
+
+                    <div className="kv">
+                      <span className="k">Completed</span>
+                      <span className="v">true</span>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            );
+          })}
 
           {completedOnly.length === 0 && (
             <Col xs={12}>

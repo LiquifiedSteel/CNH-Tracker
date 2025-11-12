@@ -1,4 +1,4 @@
-// src/components/Total.jsx
+// Total.jsx
 import {
   Card,
   Col,
@@ -40,12 +40,7 @@ function Total() {
 
   const handleSearchChange = (e) => setQuery(e.target.value);
 
-  // Helpers
-  const isTrue = (v) => {
-    if (typeof v === "boolean") return v;
-    const s = String(v ?? "").trim().toLowerCase();
-    return s === "true";
-  };
+  const isTrue = (v) => (typeof v === "boolean" ? v : String(v ?? "").trim().toLowerCase() === "true");
   const ciEq = (a, b) =>
     String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
 
@@ -54,6 +49,21 @@ function Total() {
     const d = String(device || "").trim();
     if (!d) return;
     dispatch({ type: SHEETS.COMPLETE.REQUEST, payload: { device: d } });
+  };
+
+  // Navigate to /computers?id={Device}
+  const goToDevice = (device) => {
+    const d = String(device || "").trim();
+    if (!d) return;
+    navigate(`/computers?id=${encodeURIComponent(d)}`);
+  };
+
+  // Keyboard support for cards
+  const onCardKey = (e, device) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      goToDevice(device);
+    }
   };
 
   return (
@@ -127,15 +137,22 @@ function Total() {
             const device = obj["Device"] || "";
             const completed = isTrue(obj["Completed"]);
             const isUpdatingThis = updatingDevice && ciEq(updatingDevice, device);
+            const isClickable = device.trim().length > 0;
 
             return (
               <Col key={idx} xs={12} sm={12} md={6} lg={4} className="mb-3">
                 <Card
                   className="device-card"
+                  onClick={isClickable ? () => goToDevice(device) : undefined}
+                  onKeyDown={isClickable ? (e) => onCardKey(e, device) : undefined}
+                  role={isClickable ? "button" : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
                   style={{
+                    cursor: isClickable ? "pointer" : "default",
                     backgroundColor: completed ? "rgba(40, 167, 69, 0.10)" : undefined,
                     borderColor: completed ? "rgba(40, 167, 69, 0.35)" : undefined,
                   }}
+                  aria-label={isClickable ? `Open details for ${device}` : undefined}
                 >
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-start">
@@ -148,7 +165,10 @@ function Total() {
                         <Button
                           variant="success"
                           size="sm"
-                          onClick={() => markCompleted(device)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markCompleted(device);
+                          }}
                           aria-label={`Mark ${device || "device"} as complete`}
                           disabled={isUpdatingThis}
                         >

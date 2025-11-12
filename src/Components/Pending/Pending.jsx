@@ -1,4 +1,4 @@
-// src/components/Pending.jsx
+// Pending.jsx
 import {
   Card,
   Col,
@@ -39,12 +39,7 @@ function Pending() {
   // ---- Use the reusable hook for transformation + filtering + search ----
   const { query, setQuery, filtered, normalizedQuery } = useSheetSearch(rows);
 
-  // Treat Completed as boolean true or string "true"
-  const isTrue = (v) => {
-    if (typeof v === "boolean") return v;
-    const s = String(v ?? "").trim().toLowerCase();
-    return s === "true";
-  };
+  const isTrue = (v) => (typeof v === "boolean" ? v : String(v ?? "").trim().toLowerCase() === "true");
 
   // Only show NOT-completed rows (apply on top of the hook's search result)
   const pendingOnly = useMemo(
@@ -53,10 +48,8 @@ function Pending() {
   );
 
   const pendingCount = pendingOnly.length;
-
   const handleSearchChange = (e) => setQuery(e.target.value);
 
-  // Case-insensitive device equality for disabling the correct button while updating
   const ciEq = (a, b) =>
     String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
 
@@ -65,6 +58,21 @@ function Pending() {
     const d = String(device || "").trim();
     if (!d) return;
     dispatch({ type: SHEETS.COMPLETE.REQUEST, payload: { device: d } });
+  };
+
+  // Navigate to /computers?id={Device}
+  const goToDevice = (device) => {
+    const d = String(device || "").trim();
+    if (!d) return;
+    navigate(`/computers?id=${encodeURIComponent(d)}`);
+  };
+
+  // Keyboard support for cards
+  const onCardKey = (e, device) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      goToDevice(device);
+    }
   };
 
   return (
@@ -143,10 +151,20 @@ function Pending() {
           {pendingOnly.map((obj, idx) => {
             const device = obj["Device"] || "";
             const isUpdatingThis = updatingDevice && ciEq(updatingDevice, device);
+            const isClickable = device.trim().length > 0;
 
             return (
               <Col key={idx} xs={12} sm={12} md={6} lg={4} className="mb-3">
-                <Card className="device-card" aria-busy={isUpdatingThis || undefined}>
+                <Card
+                  className="device-card"
+                  onClick={isClickable ? () => goToDevice(device) : undefined}
+                  onKeyDown={isClickable ? (e) => onCardKey(e, device) : undefined}
+                  role={isClickable ? "button" : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                  style={{ cursor: isClickable ? "pointer" : "default" }}
+                  aria-label={isClickable ? `Open details for ${device}` : undefined}
+                  aria-busy={isUpdatingThis || undefined}
+                >
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-start">
                       <Card.Title className="device-title mb-0">
@@ -155,11 +173,14 @@ function Pending() {
                       <Button
                         variant="success"
                         size="sm"
-                        onClick={() => markCompleted(device)}
-                        aria-label={`Mark ${device || "device"} as Completed`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markCompleted(device);
+                        }}
+                        aria-label={`Mark ${device || "device"} as complete`}
                         disabled={isUpdatingThis}
                       >
-                        {isUpdatingThis ? "Updating…" : "Completed"}
+                        {isUpdatingThis ? "Updating…" : "Complete"}
                       </Button>
                     </div>
 
