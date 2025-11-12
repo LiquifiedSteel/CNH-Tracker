@@ -9,6 +9,7 @@ import Home from "../Home/Home";         // example: src/Home/Home.jsx
 import ComputerDetails from '../ComputerDetails/ComputerDetails';
 import Total from '../Total/Total';
 import Pending from '../Pending/Pending';
+import Completed from '../Completed/Completed';
 
 export default function App() {
   // Example: replace this with your real auth/user state (context, redux, etc.)
@@ -30,6 +31,8 @@ export default function App() {
         <Route path="/total" element={<Total />} />
 
         <Route path="/pending" element={<Pending />} />
+
+        <Route path="/completed" element={<Completed />} />
 
         {/* optional: a catch-all 404 route */}
         <Route path="*" element={<div>404 — Not Found</div>} />
