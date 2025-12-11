@@ -26,6 +26,37 @@ const { google } = require("googleapis");
 const router = express.Router();
 router.use(express.json());
 
+const IS_PROD = process.env.NODE_ENV === "production";
+
+// ---------------- Error / sanitization helpers ----------------
+
+/**
+ * Standardized error response helper.
+ * In production, it hides internal error messages from clients.
+ */
+function errorResponse(res, status, genericMessage, err) {
+  const body = { ok: false, error: genericMessage };
+
+  if (!IS_PROD && err && err.message) {
+    body.details = err.message;
+  }
+
+  return res.status(status).json(body);
+}
+
+/**
+ * Sanitize comments going into Google Sheets to avoid formula injection.
+ * If a comment starts with = + - @, prefix it with ' so Sheets treats it as text.
+ */
+function sanitizeForSheetsComment(input) {
+  if (input == null) return "";
+  const s = String(input);
+  if (/^[=+\-@]/.test(s)) {
+    return "'" + s;
+  }
+  return s;
+}
+
 // ---------------- Configuration ----------------
 
 const STORE_PATH =
@@ -37,7 +68,9 @@ function loadActiveSpreadsheetId() {
   try {
     const raw = fs.readFileSync(STORE_PATH, "utf8");
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed.spreadsheetId === "string" ? parsed.spreadsheetId : null;
+    return parsed && typeof parsed.spreadsheetId === "string"
+      ? parsed.spreadsheetId
+      : null;
   } catch {
     return null; // Not linked yet
   }
@@ -57,7 +90,6 @@ let sheetsClient = null;
 async function getSheetsClient() {
   if (sheetsClient) return sheetsClient;
 
-  // WRITE scope so we can update cells
   const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
   let auth;
@@ -149,10 +181,15 @@ async function getFirstTabHeader(spreadsheetId) {
 
 /** Find the 1-based row number (including header) where header[colName] === value (ci). */
 function findRowByHeaderValue(rows, header, colName, needle) {
-  const colIdx = header.findIndex((h) => String(h || "").trim().toLowerCase() === String(colName).trim().toLowerCase());
+  const colIdx = header.findIndex(
+    (h) =>
+      String(h || "").trim().toLowerCase() ===
+      String(colName).trim().toLowerCase()
+  );
   if (colIdx === -1) return { rowIndex1: -1, colIndex0: -1 };
   const target = String(needle ?? "").trim().toLowerCase();
-  for (let r = 1; r < rows.length; r++) { // skip header at r=0
+  for (let r = 1; r < rows.length; r++) {
+    // skip header at r=0
     const cell = rows[r]?.[colIdx];
     if (String(cell ?? "").trim().toLowerCase() === target) {
       return { rowIndex1: r + 1, colIndex0: colIdx }; // A1 row is 1-based
@@ -186,11 +223,7 @@ router.post("/link", async (req, res) => {
       message: "Spreadsheet linked successfully.",
     });
   } catch (err) {
-    return res.status(500).json({
-      ok: false,
-      error: "Failed to link spreadsheet",
-      details: err.message,
-    });
+    return errorResponse(res, 500, "Failed to link spreadsheet", err);
   }
 });
 
@@ -208,11 +241,7 @@ router.get("/rows", async (_req, res) => {
     const data = await readAllRowsFromFirstTab(spreadsheetId);
     return res.status(200).json({ ok: true, ...data });
   } catch (err) {
-    return res.status(500).json({
-      ok: false,
-      error: "Failed to read rows",
-      details: err.message,
-    });
+    return errorResponse(res, 500, "Failed to read rows", err);
   }
 });
 
@@ -224,19 +253,33 @@ router.get("/rows", async (_req, res) => {
 router.put("/complete", async (req, res) => {
   try {
     const spreadsheetId = loadActiveSpreadsheetId();
-    if (!spreadsheetId) return res.status(400).json({ ok: false, error: "No spreadsheet linked." });
+    if (!spreadsheetId) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "No spreadsheet linked." });
+    }
 
     const device = String(req.body?.device || "").trim();
-    if (!device) return res.status(400).json({ ok: false, error: "Device is required." });
+    if (!device) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "Device is required." });
+    }
 
     const sheets = await getSheetsClient();
     const { tabName, header, rows } = await getFirstTabHeader(spreadsheetId);
 
-    const completedIdx = header.findIndex((h) => String(h || "").trim().toLowerCase() === "completed");
+    const completedIdx = header.findIndex(
+      (h) => String(h || "").trim().toLowerCase() === "completed"
+    );
     if (completedIdx === -1) throw new Error("Header 'Completed' not found.");
 
     const { rowIndex1 } = findRowByHeaderValue(rows, header, "Device", device);
-    if (rowIndex1 === -1) return res.status(404).json({ ok: false, error: `Device '${device}' not found.` });
+    if (rowIndex1 === -1) {
+      return res
+        .status(404)
+        .json({ ok: false, error: `Device '${device}' not found.` });
+    }
 
     const colA1 = columnIndexToA1(completedIdx);
     const range = `${tabName}!${colA1}${rowIndex1}`;
@@ -250,7 +293,7 @@ router.put("/complete", async (req, res) => {
 
     return res.status(200).json({ ok: true, device, completed: true });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: "Failed to mark complete", details: err.message });
+    return errorResponse(res, 500, "Failed to mark complete", err);
   }
 });
 
@@ -262,19 +305,33 @@ router.put("/complete", async (req, res) => {
 router.put("/incomplete", async (req, res) => {
   try {
     const spreadsheetId = loadActiveSpreadsheetId();
-    if (!spreadsheetId) return res.status(400).json({ ok: false, error: "No spreadsheet linked." });
+    if (!spreadsheetId) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "No spreadsheet linked." });
+    }
 
     const device = String(req.body?.device || "").trim();
-    if (!device) return res.status(400).json({ ok: false, error: "Device is required." });
+    if (!device) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "Device is required." });
+    }
 
     const sheets = await getSheetsClient();
     const { tabName, header, rows } = await getFirstTabHeader(spreadsheetId);
 
-    const completedIdx = header.findIndex((h) => String(h || "").trim().toLowerCase() === "completed");
+    const completedIdx = header.findIndex(
+      (h) => String(h || "").trim().toLowerCase() === "completed"
+    );
     if (completedIdx === -1) throw new Error("Header 'Completed' not found.");
 
     const { rowIndex1 } = findRowByHeaderValue(rows, header, "Device", device);
-    if (rowIndex1 === -1) return res.status(404).json({ ok: false, error: `Device '${device}' not found.` });
+    if (rowIndex1 === -1) {
+      return res
+        .status(404)
+        .json({ ok: false, error: `Device '${device}' not found.` });
+    }
 
     const colA1 = columnIndexToA1(completedIdx);
     const range = `${tabName}!${colA1}${rowIndex1}`;
@@ -288,7 +345,7 @@ router.put("/incomplete", async (req, res) => {
 
     return res.status(200).json({ ok: true, device, completed: false });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: "Failed to mark incomplete", details: err.message });
+    return errorResponse(res, 500, "Failed to mark incomplete", err);
   }
 });
 
@@ -300,21 +357,36 @@ router.put("/incomplete", async (req, res) => {
 router.put("/comment", async (req, res) => {
   try {
     const spreadsheetId = loadActiveSpreadsheetId();
-    if (!spreadsheetId) return res.status(400).json({ ok: false, error: "No spreadsheet linked." });
+    if (!spreadsheetId) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "No spreadsheet linked." });
+    }
 
     const device = String(req.body?.device ?? "").trim();
-    const comment = String(req.body?.comment ?? "");
+    const rawComment = req.body?.comment ?? "";
+    const comment = sanitizeForSheetsComment(rawComment);
 
-    if (!device) return res.status(400).json({ ok: false, error: "Device is required." });
+    if (!device) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "Device is required." });
+    }
 
     const sheets = await getSheetsClient();
     const { tabName, header, rows } = await getFirstTabHeader(spreadsheetId);
 
-    const commentIdx = header.findIndex((h) => String(h || "").trim().toLowerCase() === "comment");
+    const commentIdx = header.findIndex(
+      (h) => String(h || "").trim().toLowerCase() === "comment"
+    );
     if (commentIdx === -1) throw new Error("Header 'Comment' not found.");
 
     const { rowIndex1 } = findRowByHeaderValue(rows, header, "Device", device);
-    if (rowIndex1 === -1) return res.status(404).json({ ok: false, error: `Device '${device}' not found.` });
+    if (rowIndex1 === -1) {
+      return res
+        .status(404)
+        .json({ ok: false, error: `Device '${device}' not found.` });
+    }
 
     const colA1 = columnIndexToA1(commentIdx);
     const range = `${tabName}!${colA1}${rowIndex1}`;
@@ -328,7 +400,7 @@ router.put("/comment", async (req, res) => {
 
     return res.status(200).json({ ok: true, device, comment });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: "Failed to update comment", details: err.message });
+    return errorResponse(res, 500, "Failed to update comment", err);
   }
 });
 
